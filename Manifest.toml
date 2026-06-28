@@ -1,0 +1,10 @@
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.12.6"
+manifest_format = "2.0"
+project_hash = "188f0771aa2a838f2bb273be7ab27a78ec15a9ce"
+
+[[deps.Binnings]]
+path = "."
+uuid = "5e2e5b1a-4e10-4f16-bd66-f2628605f949"
+version = "1.0.0-DEV"
