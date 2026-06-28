@@ -1,3 +1,3 @@
 var documenterSearchIndex = {"docs":
-[{"category":"section","location":"#Binnings","page":"Home","text":"Documentation for Binnings.\n\n","title":"Binnings"}]
+[{"category":"section","location":"#Binnings","page":"Home","text":"Documentation for Binnings.\n\n","title":"Binnings"},{"category":"type","location":"#Binnings.SampledQuantile","page":"Home","text":"max_nobs::Int determine how many rows to sample for the quantile estimation. The heuristic 1000 * nbins means “allow roughly 1000 observations per bin”. Sampling more than that rarely improves the quality of the bin edges, so it caps the cost. The min ensures that if the dataset is smaller than that cap, all rows are used (no sampling losses).\n\n\n\n\n\n","title":"Binnings.SampledQuantile"}]
 }
