@@ -11,17 +11,7 @@ function get_idxs(
         collect(1:nsamples)
 end
 
-function lin_deviation(x::AbstractVector{T}, ::Type{S}) where {S<:AbstractFloat,T<:Real}
-    μ = mean(x)
-    return sum(xi -> S(abs(xi - μ)), x)
-end
-
-function sq_deviation(x::AbstractVector{T}, ::Type{S}) where {S<:AbstractFloat,T<:Real}
-    μ = mean(x)
-    return sum(xi -> S((xi - μ)^2), x) 
-end
-
-function bin(config::Uniform{S}, x::AbstractVector{T}) where {S<:Float,T<:Real}
+function bin(config::Uniform, x::AbstractVector{T}) where {T<:Real}
     nbins, max_nobs, rng =
         get_nbins(config), get_max_nobs(config), get_rng(config)
 
@@ -31,10 +21,10 @@ function bin(config::Uniform{S}, x::AbstractVector{T}) where {S<:Float,T<:Real}
     length(edges) == 1 && (edges = [minimum(view(x, idxs))])
     x_bin = searchsortedfirst.(Ref(edges), x)
 
-    return S.(edges), x_bin
+    return x_bin, edges
 end
 
-function bin(config::Quantile{S}, x::AbstractVector{T}) where {S<:Float,T<:Real}
+function bin(config::Quantile, x::AbstractVector{T}) where {T<:Real}
     nbins, max_nobs, rng =
         get_nbins(config), get_max_nobs(config), get_rng(config)
     alpha, beta = get_alpha(config), get_beta(config)
@@ -45,10 +35,10 @@ function bin(config::Quantile{S}, x::AbstractVector{T}) where {S<:Float,T<:Real}
     length(edges) == 1 && (edges = [minimum(view(x, idxs))])
     x_bin = searchsortedfirst.(Ref(edges), x)
 
-    return S.(edges), x_bin
+    return x_bin, edges
 end
 
-function bin(config::Jenks{S}, x::AbstractVector{T}) where {S<:Float,T<:Real}
+function bin(config::Jenks, x::AbstractVector{T}) where {T<:Real}
     nbins, maxiter = get_nbins(config), get_maxiter(config)
     fluxadjust_bothways = get_fluxadjust_bothways(config)
     fluxadjust = get_fluxadjust(config)
@@ -61,8 +51,8 @@ function bin(config::Jenks{S}, x::AbstractVector{T}) where {S<:Float,T<:Real}
     breaks = [1:np:np*nbins; ndata+1]
     
     fluxes = fill(get_flux(config),nbins-1)
-    devs = Vector{S}(undef,nbins)
-    devs_pre = Vector{S}(undef,nbins)
+    devs = Vector(undef,nbins)
+    devs_pre = Vector(undef,nbins)
 
     for iter in 1:maxiter
         devs_pre .= devs
@@ -70,7 +60,7 @@ function bin(config::Jenks{S}, x::AbstractVector{T}) where {S<:Float,T<:Real}
         for iclass in 1:nbins
             devs[iclass] =
                 deviation(
-                    @view(x[breaks[iclass]:breaks[iclass+1]-1]), S
+                    @view(x[breaks[iclass]:breaks[iclass+1]-1])
                 )
         end
 
@@ -105,32 +95,32 @@ function bin(config::Jenks{S}, x::AbstractVector{T}) where {S<:Float,T<:Real}
         end
     end
 
-    breaks
-    # edges = collect(range(minimum(x), maximum(x); length=nbins))
+    breaks[end] = breaks[end] - 1
+    edges = x[breaks]
     # length(edges) == 1 && (edges = [minimum(view(x, idxs))])
-    # x_bin = searchsortedfirst.(Ref(edges), x)
+    x_bin = searchsortedfirst.(Ref(edges), x)
 
-    # return S.(edges), x_bin
+    return x_bin, edges
 end
 
 function bin(
-    config::BinningConfig{S},
+    config::BinningConfig,
     X::AbstractArray{T}
-) where {S<:Float,T<:Real}
+) where {T<:Real}
     nfeats = size(X, 2)
-    edges = Vector{Vector{S}}(undef, nfeats)
+    edges = Vector{Vector}(undef, nfeats)
     X_bin = Vector{Vector{UInt8}}(undef, nfeats)
 
     Threads.@threads for j in 1:nfeats
-        edges[j], X_bin[j] = bin(config, view(X, :, j))
+        X_bin[j], edges[j] = bin(config, view(X, :, j))
     end
 
     return X_bin, edges
 end
 
 function bin(
-    config::BinningConfig{S},
+    config::BinningConfig,
     X::Matrix{<:AbstractArray{T}}
-) where {S<:Float,T<:Real}
+) where {T<:Real}
 
 end

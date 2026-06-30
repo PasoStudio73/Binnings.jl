@@ -10,8 +10,8 @@ const AlphaBetaQuantiles = Dict(
 )
 
 const JenksErrNorm = Dict(
-    :l1 => (lin_deviation, are),
-    :l2 => (sq_deviation, gvf)
+    :l1 => lin_deviation,
+    :l2 => sq_deviation
 )
 
 """
@@ -22,7 +22,7 @@ so it caps the cost.
 The min ensures that if the dataset is smaller than that cap,
 all rows are used (no sampling losses).
 """
-struct Uniform{S<:Float} <: AbstractBinningConfig
+struct Uniform <: AbstractBinningConfig
     nbins::UInt8
     max_nobs::Int
     rng::AbstractRNG
@@ -31,14 +31,13 @@ struct Uniform{S<:Float} <: AbstractBinningConfig
         nbins::Int=64,
         max_nobs::Int=1000,
         rng::AbstractRNG=Xoshiro(42),
-        float_type::Type{S}=Float32
-    ) where {S<:Float}
+    )
         check_parameters(nbins, max_nobs)
-        new{float_type}(nbins, max_nobs, rng)
+        new(nbins, max_nobs, rng)
     end
 end
 
-struct Quantile{S<:Float} <: AbstractBinningConfig
+struct Quantile <: AbstractBinningConfig
     nbins::UInt8
     alpha::Float16
     beta::Float16
@@ -50,22 +49,21 @@ struct Quantile{S<:Float} <: AbstractBinningConfig
         nbins::Int=64,
         max_nobs::Int=1000,
         rng::AbstractRNG=Xoshiro(42),
-        float_type::Type{S}=Float32
-    ) where {S<:Float}
+    )
         check_parameters(nbins, max_nobs)
         check_quantiles(type)
 
-        new{float_type}(nbins, AlphaBetaQuantiles[type]..., max_nobs, rng)
+        new(nbins, AlphaBetaQuantiles[type]..., max_nobs, rng)
     end
 end
 
-struct Jenks{S<:Float} <: AbstractBinningConfig
+struct Jenks <: AbstractBinningConfig
     nbins::UInt8
     maxiter::Int
     flux::Real
     fluxadjust::Real
     fluxadjust_bothways::Bool
-    errornorm::Tuple{Base.Callable,Base.Callable}
+    errornorm::Base.Callable
     max_nobs::Int
     rng::AbstractRNG
 
@@ -78,12 +76,11 @@ struct Jenks{S<:Float} <: AbstractBinningConfig
         errornorm::Symbol=:l1,
         max_nobs::Int=1000,
         rng::AbstractRNG=Xoshiro(42),
-        float_type::Type{S}=Float32
-    ) where {S<:Float}
+    )
         check_parameters(nbins, max_nobs)
         check_errnorm(errornorm)
 
-        new{float_type}(
+        new(
             nbins,
             maxiter,
             flux,
@@ -124,9 +121,8 @@ get_fluxadjust(b::Jenks) = b.fluxadjust
 get_fluxadjust_bothways(b::Jenks) = b.fluxadjust_bothways
 get_errornorm(b::Jenks) = b.errornorm
 get_initmode(b::Jenks) = b.initmode
-get_deviation(b::Jenks) = b.errornorm[1]
-get_global_errornorm(b::Jenks) = b.errornorm[2]
+get_deviation(b::Jenks) = b.errornorm
 
-const BinningConfig{S} = Union{Uniform{S}, Quantile{S}, Jenks{S}}
+const BinningConfig = Union{Uniform, Quantile, Jenks}
 
 

@@ -4,13 +4,19 @@ using Random: AbstractRNG, Xoshiro
 using StatsBase: mean, sample
 using Statistics: quantile
 
-# abstract type AbstractBinning end
 abstract type AbstractBinningConfig end
 
-# abstract type AbstractAlphaBetaConfig <: AbstractBinningConfig end
+function lin_deviation(x::AbstractVector{T}) where {T<:Real}
+    μ = mean(x)
+    return sum(xi -> abs(xi - μ), x)
+end
+
+function sq_deviation(x::AbstractVector{T}) where {T<:Real}
+    μ = mean(x)
+    return sum(xi -> (xi - μ)^2, x) 
+end
 
 export Uniform, Quantile, Jenks
-include("jenks.jl")
 include("structs.jl")
 
 # export bin
