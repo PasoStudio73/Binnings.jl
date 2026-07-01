@@ -70,3 +70,8 @@ jobs:
           using Binnings
           DocMeta.setdocmeta!(Binnings, :DocTestSetup, :(using Binnings); recursive=true)
           doctest(Binnings)
+      - uses: codecov/codecov-action@v7
+        with:
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
