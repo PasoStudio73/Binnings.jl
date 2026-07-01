@@ -1,3 +1,17 @@
+# ---------------------------------------------------------------------------- #
+#                                    utils                                     #
+# ---------------------------------------------------------------------------- #
+"""
+    get_idxs(x, max_nobs, nbins, rng)
+
+Return observation indices used to estimate bin edges.
+
+If `length(x) > max_nobs * nbins`, a reproducible, ordered sample without
+replacement is drawn using `rng`. Otherwise, all indices are returned.
+
+This limits edge-estimation cost on large datasets while preserving input-order
+indexing.
+"""
 function get_idxs(
     x::AbstractVector{T},
     max_nobs::Int,
@@ -11,6 +25,20 @@ function get_idxs(
         collect(1:nsamples)
 end
 
+# ---------------------------------------------------------------------------- #
+#                                     bin                                      #
+# ---------------------------------------------------------------------------- #
+"""
+    bin(config::Uniform, x)
+
+Discretize a numeric vector `x` into uniformly spaced bins.
+
+Edges are linearly spaced between `minimum(x)` and `maximum(x)`.
+Returns:
+
+- `x_bin::Vector{UInt8}`: 1-based bin index for each value in `x`
+- `edges::Vector`: bin edge values used for discretization
+"""
 function bin(config::Uniform, x::AbstractVector{T}) where {T<:Real}
     nbins, max_nobs, rng =
         get_nbins(config), get_max_nobs(config), get_rng(config)
@@ -24,6 +52,15 @@ function bin(config::Uniform, x::AbstractVector{T}) where {T<:Real}
     return x_bin, edges
 end
 
+"""
+    bin(config::Quantile, x)
+
+Discretize a numeric vector `x` using quantile-based bins.
+
+Internal edges are computed from quantiles of sampled observations (`get_idxs`),
+with interpolation controlled by `alpha` and `beta` from `config`.
+Returns `(x_bin, edges)` where `x_bin` contains 1-based bin indices.
+"""
 function bin(config::Quantile, x::AbstractVector{T}) where {T<:Real}
     nbins, max_nobs, rng =
         get_nbins(config), get_max_nobs(config), get_rng(config)
@@ -39,6 +76,15 @@ function bin(config::Quantile, x::AbstractVector{T}) where {T<:Real}
     return x_bin, edges
 end
 
+"""
+    bin(config::Jenks, x)
+
+Discretize a numeric vector `x` with an iterative Jenks-style optimization.
+
+The algorithm adjusts class breaks to reduce within-bin deviation using the
+configured deviation function and flux parameters. Returns `(x_bin, edges)`,
+where `x_bin` are 1-based bin indices and `edges` are learned break values.
+"""
 function bin(config::Jenks, x::AbstractVector{T}) where {T<:Real}
     nbins, maxiter = get_nbins(config), get_maxiter(config)
     fluxadjust_bothways = get_fluxadjust_bothways(config)
@@ -104,6 +150,16 @@ function bin(config::Jenks, x::AbstractVector{T}) where {T<:Real}
     return x_bin, edges
 end
 
+"""
+    bin(config, X::AbstractArray{T})
+
+Feature-wise binning for tabular numeric data (`n_samples × n_features`).
+
+Each column is binned independently (threaded), returning:
+
+- `X_bin::Vector{Vector{UInt8}}`: one binned vector per feature
+- `edges::Vector{Vector}`: one edge vector per feature
+"""
 function bin(
     config::BinningConfig,
     X::AbstractArray{T}
@@ -119,6 +175,23 @@ function bin(
     return X_bin, edges
 end
 
+"""
+    bin(config, X::Matrix{<:AbstractArray{T}})
+
+Binning for datasets where each cell is a multidimensional item
+(e.g., time series vectors, images, or tensors).
+
+For each column/feature:
+1. all per-row items are flattened and concatenated,
+2. bin edges are learned once on the flattened values,
+3. binned values are reshaped back to each original item shape.
+
+Returns:
+
+- binned data with original `(nrows, ncols)` structure and per-item shapes
+  preserved.
+- `edges::Vector{Vector}` with one edge vector per column.
+"""
 function bin(
     config::BinningConfig,
     X::Matrix{<:AbstractArray{T}}
@@ -129,15 +202,14 @@ function bin(
 
     bins = Vector{Tuple{Vector{UInt8}, Vector}}(undef, ncols)
     Threads.@threads for j in 1:ncols
-        # stack flattens all elements in column j into a (el_len × nrows) matrix, then vec it
-        flat = vec(stack(vec, view(X, :, j)))  # length = nrows * el_len
+        flat = vec(stack(vec, view(X, :, j)))
         bins[j] = bin(config, flat)
     end
 
     edges = last.(bins)
 
     X_bin = map(1:ncols) do j
-        flat_bin = first(bins[j])          # length = nrows * el_len
+        flat_bin = first(bins[j])
         arr = reshape(flat_bin, el_shape..., nrows)
         [copy(selectdim(arr, ndims(arr), i)) for i in 1:nrows]
     end
