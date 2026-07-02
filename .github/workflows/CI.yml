@@ -67,9 +67,9 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using Binnings
-          DocMeta.setdocmeta!(Binnings, :DocTestSetup, :(using Binnings); recursive=true)
-          doctest(Binnings)
+          using SignalEncodings
+          DocMeta.setdocmeta!(SignalEncodings, :DocTestSetup, :(using SignalEncodings); recursive=true)
+          doctest(SignalEncodings)
       - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
